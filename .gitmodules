@@ -1,0 +1,6 @@
+[submodule "submodules/jasmine"]
+	path = submodules/jasmine
+	url = git@github.com:pivotal/jasmine
+[submodule "submodules/resemble"]
+	path = submodules/resemble
+	url = https://github.com/Huddle/Resemble.js

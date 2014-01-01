@@ -1,0 +1,32 @@
+{
+    "name": "jpr",
+    "description": "A test bed built on Jasmine-Phantom-Resemble that can compare images and snapshots",
+    "version": "0.0.1",
+    "license": "MIT",
+
+    "author": "FusionCharts Technologies  <support@fusioncharts.com>",
+    "contributors": [],
+
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/sushantbs/jpr.git"
+    },
+
+    "keywords": [
+        "fusioncharts",
+        "tdd",
+        "resemble",
+        "phantom",
+        "jasmine",
+        "image"
+    ],
+    "dependencies": {},
+    "bin": {
+        "jpr": "./bin/jpr"
+    },
+    "devDependencies": {
+        "commander": "*"
+    },
+    "scripts": {
+    }
+}
