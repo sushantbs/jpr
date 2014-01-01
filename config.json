@@ -1,0 +1,18 @@
+{
+	"specSource": "spec/",
+	"imageSource": "ref/",
+	"src": [
+		"src/Song.js",
+		"src/Player.js",
+		"spec/SpecHelper.js"
+	],
+	"pairs": [
+		{
+			"specName": "testSpec"
+		},
+		{
+			"specName": "PlayerSpec",
+			"imageName": "PlayerWala-screenshot"
+		}
+	]
+}
