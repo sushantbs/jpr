@@ -9,7 +9,7 @@ Usage
 Assuming that phantomjs has been installed, JPR.js can be used in the following ways after cloning the repo
 and going to root folder
 
-1. To run ALL specs
+####To run ALL specs
 
    ```
    node bin/jpr
@@ -18,20 +18,27 @@ and going to root folder
    Executes all the specs provided in the config.json and compares the generated images to the reference images.
 
 
-2. To run a specific spec
+####To run a specific spec
 
-  * Run a specific spec
-  
+  1. Run a specific spec
+
       ```
       node bin/jpr --specFile [path/to/spec/file]
       ```
 
       Executes only the specified spec file
-      
-  * Run a specific spec and compare with a specific image
+
+  2. Run a specific spec and compare with a specific image
 
       ```
       node bin/jpr --specFile [path/to/spec/file] --imageFile [path/to/image/file]
       ```
       Executes the given spec and compares the generated image to the given image file.
 
+
+####Provide the image diff threshold (in %)
+
+  ```
+  node bin/jpr --threshold 0.5
+  node bin/jpr --specFile [path/to/spec/file] --imageFile [path/to/image/file] --threshold 2.0
+  ```
