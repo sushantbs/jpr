@@ -6,12 +6,14 @@ var program = require('commander');
 program
   .version('0.0.1')
   .option('-t, --trace', 'Show full stack trace on error')
-  .option('-c, --config [file]', 'Path to config file', 'config.json')
+  .option('-c, --config [file]', 'Path to config file', 'config.json') // supported
   .option('-s, --saveImages [path]', 'Save the spec images in the folder', 'none')
-  .option('-f, --specFile [file]', 'Execute a particular spec file', 'none')
-  .option('-i, --imageFile [file]', 'Compare the output of spec with this image', 'none')
+  .option('-f, --specFile [file]', 'Execute a particular spec file', 'none') // supported
+  .option('-i, --imageFile [file]', 'Compare the output of spec with this image', 'none') // supported
   .option('-d, --debug', 'Enable debug mode to see the execution status in the console')
   .option('-k, --keepImages', 'Do not delete the images that are generated as part of the spec')
+  .option('-th, --threshold', 'The image mismatch threshold', '0.05')
+  .option('-o, --outputTo [file]', 'Save the output into the given file', 'none')
   .parse(process.argv);
 
 jpr(program);

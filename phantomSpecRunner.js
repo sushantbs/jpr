@@ -9,8 +9,6 @@ var runnerFile = "SpecRunner.html";
 var specInclusion;
 
 page.onConsoleMessage = function (msg) {
-	console.log("Via Phantom: " + msg);
-
 	if (msg === "__exitPhantom__") {
 		//page.render(specName + '-screenshot.png');
 		if (saveImage === "true") {
@@ -18,22 +16,16 @@ page.onConsoleMessage = function (msg) {
 		}
 		phantom.exit();
 	}
-};
-
-page.onPageCreated = function () {
-	console.log("page is created!");
-};
-
-page.onLoadFinished = function () {
-	console.log("loading is finished!");
+	else {
+		console.log("PHANTOM SPEC RUNNER:: " + msg);
+	}
 };
 
 if (specFile) {
 	page.open(runnerFile, function (status) {
-		console.log("Status: " + status);
 		if (status === "success") {
 			specInclusion = false;
-			console.log("\nAdding src files:\n==========");
+			console.log("INFO:: Adding src files:\n------------");
 
 			page.injectJs("lib/jasmine-1.3.1/jasmine.js");
 			page.injectJs("lib/jasmine-1.3.1/jasmine-html.js");
@@ -46,7 +38,7 @@ if (specFile) {
 				});
 			}
 
-			console.log("\nAdding spec file:\n==========");
+			console.log("\nINFO:: Adding spec file:\n-------------");
 			console.log(specFile);
 
 			if (specFile) {
@@ -78,16 +70,17 @@ if (specFile) {
 			    });
 			}
 			else {
-				console.log("Failed to include spec: " + specFile);
+				console.log("ERROR:: Failed to include spec: " + specFile);
 				phantom.exit();
 			}
 		}
 		else {
+			console.log("ERROR:: Unable to open the test runner")
 			phantom.exit();
 		}
 	});
 }
 else {
-	console.log("Spec file not found");
+	console.log("ERROR:: Spec file not found");
 	phantom.exit();
 }

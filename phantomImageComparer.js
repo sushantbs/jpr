@@ -5,17 +5,20 @@ var targetImage = phantom.args[1];
 
 page.onConsoleMessage = function (msg) {
 	if (msg === "__exitPhantomMatch__") {
+		console.log("PHANTOM IMAGE COMPARER:: Great, the images MATCH!");
 		phantom.exit();
 	}
-	if (msg === "__exitPhantomMismatch__") {
+	else if (msg === "__exitPhantomMismatch__") {
+		console.log("PHANTOM IMAGE COMPARER:: The images do NOT match!");
 		phantom.exit();
 	}
-
-	console.log(msg);
+	else {
+		console.log("PHANTOM IMAGE COMPARER:: " + msg);
+	}
 };
 
 page.onError = function (msg) {
-	console.log('****** page error ******');
+	console.log('****** PAGE ERROR ******');
 	console.error(msg);
 	console.log('****** ********** ******');
 
@@ -24,19 +27,23 @@ page.onError = function (msg) {
 };
 
 page.open('http://localhost:8090/', function (status) {
-	console.log("localhost8090 status:" +  status);
 
-	var resp = page.evaluate(function (srcFile, targetFile) {
+	if (status === "success") {
+		var resp = page.evaluate(function (srcFile, targetFile) {
 
-		resemble(srcFile).compareTo(targetFile).onComplete(function (data) {
-			console.log("Mismatch: " + data.misMatchPercentage);
-			if (data.misMatchPercentage < 0.05) {
-				console.log("__exitPhantomMatch__");
-			}
-			else {
-				console.log("__exitPhantomMismatch__");
-			}
-		});
-	}, srcImage, targetImage);
+			resemble(srcFile).compareTo(targetFile).onComplete(function (data) {
+				console.log("INFO:: Image mismatch percentage: " + data.misMatchPercentage);
+				if (data.misMatchPercentage < 0.05) {
+					console.log("__exitPhantomMatch__");
+				}
+				else {
+					console.log("__exitPhantomMismatch__");
+				}
+			});
+		}, srcImage, targetImage);
+	}
+	else {
+		console.error("ERROR:: Unable to open page");
+		phantom.exit();
+	}
 });
-
