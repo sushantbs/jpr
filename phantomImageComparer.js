@@ -2,6 +2,7 @@ var page = require('webpage').create();
 
 var srcImage = phantom.args[0];
 var targetImage = phantom.args[1];
+var threshold = Number(phantom.args[2]);
 
 page.onConsoleMessage = function (msg) {
 	if (msg === "__exitPhantomMatch__") {
@@ -29,18 +30,18 @@ page.onError = function (msg) {
 page.open('http://localhost:8090/', function (status) {
 
 	if (status === "success") {
-		var resp = page.evaluate(function (srcFile, targetFile) {
+		var resp = page.evaluate(function (srcFile, targetFile, threshold) {
 
 			resemble(srcFile).compareTo(targetFile).onComplete(function (data) {
 				console.log("INFO:: Image mismatch percentage: " + data.misMatchPercentage);
-				if (data.misMatchPercentage < 0.05) {
+				if (data.misMatchPercentage < threshold) {
 					console.log("__exitPhantomMatch__");
 				}
 				else {
 					console.log("__exitPhantomMismatch__");
 				}
 			});
-		}, srcImage, targetImage);
+		}, srcImage, targetImage, threshold);
 	}
 	else {
 		console.error("ERROR:: Unable to open page");

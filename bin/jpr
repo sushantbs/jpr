@@ -12,7 +12,7 @@ program
   .option('-i, --imageFile [file]', 'Compare the output of spec with this image', 'none') // supported
   .option('-d, --debug', 'Enable debug mode to see the execution status in the console')
   .option('-k, --keepImages', 'Do not delete the images that are generated as part of the spec')
-  .option('-th, --threshold', 'The image mismatch threshold', '0.05')
+  .option('-th, --threshold [number]', 'The image mismatch threshold', '0.05') //supported
   .option('-o, --outputTo [file]', 'Save the output into the given file', 'none')
   .parse(process.argv);
 

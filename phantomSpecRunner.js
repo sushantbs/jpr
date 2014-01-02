@@ -3,7 +3,6 @@ var page = require("webpage").create();
 var srcFileArray = phantom.args[0].split(",");
 var specFile = phantom.args[1];
 //var specName = phantom.args[2];
-var saveImage = phantom.args[2];
 
 var runnerFile = "SpecRunner.html";
 var specInclusion;
@@ -11,9 +10,7 @@ var specInclusion;
 page.onConsoleMessage = function (msg) {
 	if (msg === "__exitPhantom__") {
 		//page.render(specName + '-screenshot.png');
-		if (saveImage === "true") {
-			page.render('temp-screenshot.png');
-		}
+		page.render('temp-screenshot.png');
 		phantom.exit();
 	}
 	else {

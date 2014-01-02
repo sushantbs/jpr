@@ -7,30 +7,174 @@ var server;
 var lib = path.join(__dirname, './lib');
 console.log("Lib path:" + lib);
 
-var currentSpecIndex = 0;
+var JPRSpecRunner = function (commandLineOptions) {
 
-var JPRSpecRunner = function (specArray, srcFiles) {
+	var co = commandLineOptions;
 
-	this.srcArray = srcFiles;
-	this.specArray = specArray;
+	this.isSingleSpec = (co.specFile !== "none");
+
+	// whether to execute a single spec or all the available specs
+	if (this.isSingleSpec) {
+		this.specFile = co.specFile;
+		this.imageFile = (co.imageFile !== "none" ? co.imageFile : null);
+	}
+	else {
+		this.specFile = null;
+		this.imageFile = null;
+	}
+
+	// location of the config file
+	this.config = co.config;
+	this.compareThreshold = co.threshold;
+	console.log("threshold:: " +  co.threshold);
+
+	this.srcArray = null;
+	this.specArray = null;
 	this.currentIndex = 0;
 	this.currentSpec = null;
 
 	this.resembleServer = null;
 };
 
-JPRSpecRunner.prototype.executeNextSpec = function () {
+JPRSpecRunner.prototype.init = function () {
+	var jpr = this,
+		specFile = jpr.specFile,
+		imageFile = jpr.imageFile,
+		config = jpr.config;
+
+	if (!this.isSingleSpec) {
+		jpr.readConfig(function () {
+			console.log("INFO:: Config file found at: " + config);
+
+			var configPath = path.join(process.cwd(), config);
+			var configJSON = require(configPath);
+
+			var specArray = [];
+			var pairs = configJSON.pairs;
+			var specSource = configJSON.specSource;
+			var imageSource = configJSON.imageSource;
+			var srcFiles = configJSON.src.join(",");
+
+			console.log("INFO:: Spec Source: " + path.join(process.cwd(), specSource));
+			console.log("INFO:: Image Source: " + path.join(process.cwd(), imageSource));
+
+			if (pairs) {
+				pairs.forEach(function (pair) {
+					specArray.push({
+						name: pair.specName,
+						location: path.join(process.cwd(), specSource) + pair.specName + ".js",
+						refImage: (imageSource + (pair.imageName || (pair.specName + '-screenshot')) +
+							".png")
+					});
+				});
+			}
+
+			jprRunner.createResembleServer();
+			jprRunner.execute(specArray, srcFiles);
+
+		}, function () {
+			console.log("ERROR:: Config file NOT found at: " + config);
+		});
+	}
+	else {
+		jpr.readConfig(function () {
+
+			console.log("INFO:: Config file found at: " + config);
+			console.log("INFO:: Spec file: " + specFile);
+			console.log("INFO:: Image file: " + imageFile);
+			var specArray = [{
+				name: "singleJPRSpec",
+				location: specFile,
+				refImage: imageFile
+			}];
+
+			var configPath = path.join(process.cwd(), config);
+			var configJSON = require(configPath);
+			var srcFiles = configJSON.src.join(",");
+
+			if (imageFile !== "none") {
+				jprRunner.createResembleServer();
+			}
+			jpr.execute(specArray, srcFiles);
+
+		}, function () {
+			console.log("ERROR:: Config file NOT found at: " + config);
+		});
+	}
+};
+
+JPRSpecRunner.prototype.readConfig = function (success, error) {
+	var jpr = this,
+		config = jpr.config;
+
+	console.log("INFO:: Config path: " + config);
+	fs.exists(config, function (exists) {
+		if (exists) {
+			success();
+		}
+		else {
+			console.log("ERROR:: Config not found");
+			error();
+		}
+	});
+};
+
+JPRSpecRunner.prototype.execute = function (specArray, srcFiles) {
 	var jpr = this;
 
-	if (this.currentIndex < this.specArray.length) {
-		this.currentSpec = this.specArray[this.currentIndex];
+	jpr.specArray = specArray;
 
-		runSpecInPhantom(this.srcArray, this.currentSpec.name,
-			this.currentSpec.location, this.currentSpec.refImage, function () {
-				jpr.currentIndex += 1;
-				jpr.executeNextSpec();
+	if (srcFiles) {
+		jpr.srcArray = srcFiles;
+	}
+
+	jpr.currentIndex = 0;
+	jpr.currentSpec = null;
+
+	jpr.executeNextSpec();
+};
+
+JPRSpecRunner.prototype.executeNextSpec = function () {
+	var jpr = this,
+		threshold = jpr.threshold,
+		next = function () {
+			fs.unlink(path.join(process.cwd(), "./temp-screenshot.png"));
+			jpr.currentIndex += 1;
+			jpr.executeNextSpec();
+		},
+		comparer = function () {
+			var imageLocation = jpr.currentSpec.refImage,
+				threshold = jpr.compareThreshold;
+
+			if (imageLocation !== "none") {
+				fs.exists(imageLocation, function (exists) {
+					if (exists) {
+						console.log("INFO:: Reference image present at: " + imageLocation);
+						compareInPhantom(imageLocation, 'temp-screenshot.png', threshold, next);
+					}
+					else {
+						console.log("ERROR:: Reference image not found at " + imageLocation);
+						next();
+					}
+				});
 			}
-		);
+			else {
+				console.log("WARN:: No reference image provided");
+				next();
+			}
+		};
+
+	if (this.currentIndex < this.specArray.length) {
+
+		this.currentSpec = this.specArray[this.currentIndex];
+		if (this.currentSpec.refImage) {
+			runSpecInPhantom(this.srcArray, this.currentSpec.name,
+				this.currentSpec.location, comparer);
+		}
+		else {
+			runSpecInPhantom(this.srcArray, this.currentSpec.name,
+				this.currentSpec.location, next);
+		}
 	}
 	else {
 		this.finished = true;
@@ -131,12 +275,13 @@ JPRSpecRunner.prototype.finishedExecution = function () {
 	}
 };
 
-var compareInPhantom = function (srcImageLocation, targetImageLocation, callback) {
+var compareInPhantom = function (srcImageLocation, targetImageLocation, threshold, callback) {
 	var commands = [
 		"phantomjs",
 		"phantomImageComparer.js",
 		srcImageLocation,
-		targetImageLocation
+		targetImageLocation,
+		threshold
 	];
 
 	var executer = exec(commands.join(" "), function (err, stdout, stderr) {
@@ -156,24 +301,21 @@ var compareInPhantom = function (srcImageLocation, targetImageLocation, callback
 
 		console.log("=========================\n");
 
-		fs.unlink(path.join(process.cwd(), "./" + targetImageLocation));
 		callback && callback();
 	});
 };
 
-var runSpecInPhantom = function (srcFiles, specName, specLocation, imageLocation, callback) {
+var runSpecInPhantom = function (srcFiles, specName, specLocation, callback) {
 	var commands = [
 		"phantomjs",
 		"phantomSpecRunner.js",
 		srcFiles,
-		specLocation,
-		(imageLocation === "none" ? "false" : "true")
+		specLocation
 	];
 
 	var executer = exec(commands.join(" "), function (err, stdout, stderr) {
 		console.log("\nPhantomJS Runner\n=======================\n" + stdout);
 
-		//callback && callback(err, stdout, stderr);
 		if (err) {
 			console.log("****** PHANTOM ERROR *******");
 			console.log(err);
@@ -188,116 +330,12 @@ var runSpecInPhantom = function (srcFiles, specName, specLocation, imageLocation
 
 		console.log("=========================\n");
 
-		if (imageLocation !== "none") {
-			fs.exists(imageLocation, function (exists) {
-				if (exists) {
-					console.log("INFO:: Reference image present at: " + imageLocation);
-					compareInPhantom(imageLocation, 'temp-screenshot.png', callback);
-				}
-				else {
-					console.log("ERROR:: Reference image not found at " + imageLocation);
-					callback && callback();
-				}
-			});
-		}
-		else {
-			console.log("WARN:: No reference image provided");
-			callback && callback();
-		}
-	});
-};
-
-var readConfig = function (config, success, error) {
-	console.log("INFO:: Config path: " + config);
-	fs.exists(config, function (exists) {
-		if (exists) {
-			success();
-		}
-		else {
-			console.log("ERROR:: Config not found");
-			error();
-		}
-	});
-};
-
-var runTests = function (config, saveImages) {
-
-	readConfig(config, function () {
-		console.log("INFO:: Config file found at: " + config);
-
-		var specArray = [];
-		var configPath = path.join(process.cwd(), config);
-		var configJSON = require(configPath);
-
-		var pairs = configJSON.pairs;
-		var specSource = configJSON.specSource;
-		var imageSource = configJSON.imageSource;
-		var srcFiles = configJSON.src.join(",");
-
-		var specLocation;
-		console.log("INFO:: Spec Source: " + path.join(process.cwd(), specSource));
-		console.log("INFO:: Image Source: " + path.join(process.cwd(), imageSource));
-
-		if (pairs) {
-			pairs.forEach(function (pair) {
-				specArray.push({
-					name: pair.specName,
-					location: path.join(process.cwd(), specSource) + pair.specName + ".js",
-					refImage: (imageSource + (pair.imageName || (pair.specName + '-screenshot')) +
-						".png")
-				});
-			});
-		}
-
-		var jprRunner = new JPRSpecRunner(specArray, srcFiles);
-		jprRunner.createResembleServer();
-		jprRunner.executeNextSpec();
-
-	}, function () {
-		console.log("ERROR:: Config file NOT found at: " + config);
-	});
-};
-
-var runSingleTest = function (config, specFile, imageFile) {
-	readConfig(config, function () {
-		console.log("INFO:: Config file found at: " + config);
-		console.log("INFO:: Spec file: " + specFile);
-		console.log("INFO:: Image file: " + imageFile);
-
-		var specArray = [{
-			name: "singleJPRSpec",
-			location: specFile,
-			refImage: imageFile
-		}];
-
-		var configPath = path.join(process.cwd(), config);
-		var configJSON = require(configPath);
-		var srcFiles = configJSON.src.join(",");
-
-		var jprRunner = new JPRSpecRunner(specArray, srcFiles);
-		if (imageFile !== "none") {
-			jprRunner.createResembleServer();
-		}
-		jprRunner.executeNextSpec();
-
-	}, function () {
-		console.log("ERROR:: Config file NOT found at: " + config);
+		callback && callback(err, stdout, stderr);
 	});
 };
 
 module.exports = function (program) {
 
-	/*if (program.saveImages) {
-
-	}
-	else {
-
-	}*/
-
-	if (program.specFile !== "none") {
-		runSingleTest(program.config, program.specFile, program.imageFile);
-	}
-	else {
-		runTests(program.config);
-	}
+	jprRunner = new JPRSpecRunner(program);
+	jprRunner.init();
 };
